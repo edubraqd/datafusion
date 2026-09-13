@@ -1200,11 +1200,13 @@ config_namespace! {
         pub enabled: bool, default = false
 
         /// Minimum chunk size in bytes. The rolling hash will not trigger a split
-        /// until this many bytes have been accumulated. Default is 256 KiB.
+        /// until this many bytes have been accumulated. Must be greater than 0
+        /// when CDC is enabled. Default is 256 KiB.
         pub min_chunk_size: usize, default = 256 * 1024
 
         /// Maximum chunk size in bytes. A split is forced when the accumulated
-        /// size exceeds this value. Default is 1 MiB.
+        /// size exceeds this value. Must be greater than `min_chunk_size` when
+        /// CDC is enabled. Default is 1 MiB.
         pub max_chunk_size: usize, default = 1024 * 1024
 
         /// Normalization level. Increasing this improves deduplication ratio
@@ -1419,7 +1421,7 @@ config_namespace! {
         /// (writing) Sets best effort maximum size of data page in bytes
         pub data_pagesize_limit: usize, default = 1024 * 1024
 
-        /// (writing) Sets write_batch_size in rows
+        /// (writing) Sets write_batch_size in rows. Must be greater than 0.
         pub write_batch_size: usize, default = 1024
 
         /// (writing) Sets parquet writer version
@@ -1459,7 +1461,8 @@ config_namespace! {
         /// rows). Writing larger row groups requires more memory to write, but
         /// can get better compression and be faster to read. When
         /// `max_row_group_bytes` is also set, the writer flushes a row group when
-        /// either limit is reached, whichever comes first.
+        /// either limit is reached, whichever comes first. Must be greater
+        /// than 0.
         pub max_row_group_size: usize, default =  1024 * 1024
 
         /// (writing) Target maximum size of each row group in bytes. When set,
@@ -1475,14 +1478,16 @@ config_namespace! {
         /// (writing) Sets "created by" property
         pub created_by: String, default = concat!("datafusion version ", env!("CARGO_PKG_VERSION")).into()
 
-        /// (writing) Sets column index truncate length
+        /// (writing) Sets column index truncate length. Must be greater than 0
+        /// if set; if NULL, column index values are not truncated.
         pub column_index_truncate_length: Option<usize>, default = Some(64)
 
-        /// (writing) Sets statistics truncate length. If NULL, uses
-        /// default parquet writer setting
+        /// (writing) Sets statistics truncate length. Must be greater than 0
+        /// if set; if NULL, uses default parquet writer setting
         pub statistics_truncate_length: Option<usize>, default = Some(64)
 
-        /// (writing) Sets best effort maximum number of rows in data page
+        /// (writing) Sets best effort maximum number of rows in data page.
+        /// Must be greater than 0.
         pub data_page_row_count_limit: usize, default = 20_000
 
         /// (writing)  Sets default encoding for any column.
@@ -1496,8 +1501,9 @@ config_namespace! {
         /// (writing) Write bloom filters for all columns when creating parquet files
         pub bloom_filter_on_write: bool, default = false
 
-        /// (writing) Sets bloom filter false positive probability. If NULL, uses
-        /// default parquet writer setting
+        /// (writing) Sets bloom filter false positive probability. Must be
+        /// strictly between 0 and 1 if set; if NULL, uses default parquet
+        /// writer setting
         pub bloom_filter_fpp: Option<f64>, default = None
 
         /// (writing) Sets bloom filter number of distinct values. If NULL, uses
@@ -3365,8 +3371,8 @@ config_namespace_with_hashmap! {
         /// default parquet options
         pub statistics_enabled: Option<String>, default = None
 
-        /// Sets bloom filter false positive probability for the column path. If NULL, uses
-        /// default parquet options
+        /// Sets bloom filter false positive probability for the column path. Must be
+        /// strictly between 0 and 1 if set; if NULL, uses default parquet options
         pub bloom_filter_fpp: Option<f64>, default = None
 
         /// Sets bloom filter number of distinct values. If NULL, uses

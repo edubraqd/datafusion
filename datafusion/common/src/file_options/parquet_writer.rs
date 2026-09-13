@@ -252,12 +252,19 @@ impl ParquetOptions {
             max_in_list_size: _,
         } = self;
 
-        // The `parquet` crate rejects these values with a panic (`assert!`)
-        // while the properties are being built, so check them here and report
-        // a configuration error instead.
+        // The `parquet` crate either panics on these values (`assert!` while
+        // the properties are built) or loops forever on a zero batch size, so
+        // check them here and report a configuration error instead.
         if *write_batch_size == 0 {
             return Err(DataFusionError::Configuration(
                 "datafusion.execution.parquet.write_batch_size must be greater than 0"
+                    .to_string(),
+            ));
+        }
+        if *data_page_row_count_limit == 0 {
+            return Err(DataFusionError::Configuration(
+                "datafusion.execution.parquet.data_page_row_count_limit must be \
+                 greater than 0"
                     .to_string(),
             ));
         }
@@ -269,13 +276,15 @@ impl ParquetOptions {
         }
         if *column_index_truncate_length == Some(0) {
             return Err(DataFusionError::Configuration(
-                "datafusion.execution.parquet.column_index_truncate_length must be                  greater than 0 (unset it to disable truncation)"
+                "datafusion.execution.parquet.column_index_truncate_length must be \
+                 greater than 0 (unset it to disable truncation)"
                     .to_string(),
             ));
         }
         if *statistics_truncate_length == Some(0) {
             return Err(DataFusionError::Configuration(
-                "datafusion.execution.parquet.statistics_truncate_length must be                  greater than 0 (unset it to disable truncation)"
+                "datafusion.execution.parquet.statistics_truncate_length must be \
+                 greater than 0 (unset it to disable truncation)"
                     .to_string(),
             ));
         }
@@ -285,7 +294,8 @@ impl ParquetOptions {
         if content_defined_chunking.enabled {
             if content_defined_chunking.min_chunk_size == 0 {
                 return Err(DataFusionError::Configuration(
-                    "datafusion.execution.parquet.content_defined_chunking.min_chunk_size                      must be greater than 0"
+                    "datafusion.execution.parquet.content_defined_chunking.min_chunk_size \
+                 must be greater than 0"
                         .to_string(),
                 ));
             }
@@ -293,7 +303,8 @@ impl ParquetOptions {
                 <= content_defined_chunking.min_chunk_size
             {
                 return Err(DataFusionError::Configuration(format!(
-                    "datafusion.execution.parquet.content_defined_chunking.max_chunk_size                      ({}) must be greater than min_chunk_size ({})",
+                    "datafusion.execution.parquet.content_defined_chunking.max_chunk_size \
+                 ({}) must be greater than min_chunk_size ({})",
                     content_defined_chunking.max_chunk_size,
                     content_defined_chunking.min_chunk_size
                 )));
@@ -1039,6 +1050,13 @@ mod tests {
                 ..Default::default()
             })
             .contains("write_batch_size")
+        );
+        assert!(
+            err(ParquetOptions {
+                data_page_row_count_limit: 0,
+                ..Default::default()
+            })
+            .contains("data_page_row_count_limit")
         );
         assert!(
             err(ParquetOptions {
